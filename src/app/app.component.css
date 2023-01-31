@@ -1,0 +1,4 @@
+@import 'https://js.arcgis.com/4.24/esri/themes/light/main.css';
+.esri-view {
+    height: 620px;
+  }
