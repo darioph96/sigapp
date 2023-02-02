@@ -86,7 +86,8 @@ export class AppComponent implements OnInit {
           loadsMap();
           Buscar();
           Consulta();
-          featureLayerApplyEdits();
+          //featureLayerApplyEdits();
+          featureLayerApplyEdits2();
 
         })
         .catch(error => {
@@ -626,7 +627,7 @@ export class AppComponent implements OnInit {
             }
           });
         });
-        // Call FeatureLayer.applyEdits() with specified params.
+        //Call FeatureLayer.applyEdits() with specified params.
         function applyEditsToIncidents(params: any) {
           featureLayer
             .applyEdits(params)
@@ -753,6 +754,57 @@ export class AppComponent implements OnInit {
           document!.getElementById("viewDiv")!.style.cursor = "auto";
         };
 
+      }
+      //fin de ejemplo de FeatureLayer using applyEdits()
+
+      //comienzo de ejemplo de FeatureLayer using applyEdits()
+      function featureLayerApplyEdits2(){
+
+          //addFeatureBtnDiv.style.display = "none";
+          //addTemplatesDiv.style.display = "none";
+          //unselectFeature();
+          const featureLayer = new FeatureLayer({
+            url: "https://procesosags.sigsa.info/server/rest/services/Francisco_Lopez/poblacion_mexico/FeatureServer/0",
+            outFields: ["*"],
+            id: "incidentsLayer"
+          });
+          let params = {
+            "cov_": 7.0,
+            "cov_id": 6.0,
+            "entidad": "cesar",
+            "capital": "Hermosillo",
+            "rasgo_geog": " ",
+            "num_edo": "26",
+            "pob_tot10": 2662480.0
+           };
+           /*let params ={
+            "FID" :1,
+            "AREA": 12,
+            "PERIMETER": 12,
+            "COV_": 12,
+            "COV_ID": 12,
+            "ENTIDAD": "cesar",
+            "CAPITAL": "daiel",
+            "RASGO_GEOG": "xxx",
+            "NUM_EDO": "12",
+            "POB_TOT10": 12,
+            "IND_MARG": 12,
+            "GRA_MARG": "alto"
+           }*/
+           //addFeatures,
+          featureLayer
+            .applyEdits({ addFeatures: [params] })
+            .then((editsResult: any) => {
+              // Get the objectId of the newly added feature.
+              // Call selectFeature function to highlight the new feature.
+              if (editsResult.addFeatureResults.length > 0) {
+                const objectId = editsResult.addFeatureResults[0].objectId;
+                console.log("actualizado/agregado:",objectId);
+              }
+            })
+            .catch((error: any) => {
+              console.log("error = ", error);
+            });
       }
       //fin de ejemplo de FeatureLayer using applyEdits()
     })
