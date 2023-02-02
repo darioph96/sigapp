@@ -29,8 +29,11 @@ export class AppComponent implements OnInit {
       "esri/Graphic",
       "esri/geometry/geometryEngineAsync",
       "esri/rest/query",
-      "esri/widgets/Search"
-    ]).then(([esriConfig, IdentityManager, ArcGISMap, MapView, FeatureLayer, FeatureTable, reactiveUtils, Editor, Home, GraphicsLayer, SketchViewModel, Graphic, geometryEngineAsync, query, Search]) => {
+      "esri/widgets/Search",
+        "esri/widgets/Expand",
+        "esri/widgets/FeatureForm",
+        "esri/widgets/FeatureTemplates"
+    ]).then(([esriConfig, IdentityManager, ArcGISMap, MapView, FeatureLayer, FeatureTable, reactiveUtils, Editor, Home, GraphicsLayer, SketchViewModel, Graphic, geometryEngineAsync, query, Search, Expand, FeatureForm, FeatureTemplates]) => {
 
       const map = new ArcGISMap({
         basemap: 'topo-vector'
@@ -83,6 +86,9 @@ export class AppComponent implements OnInit {
           loadsMap();
           Buscar();
           Consulta();
+          //featureLayerApplyEdits();
+          featureLayerApplyEdits2();
+
         })
         .catch(error => {
           console.log(error)
@@ -511,6 +517,312 @@ export class AppComponent implements OnInit {
 
         }
       }
+
+      //comienzo de ejemplo de FeatureLayer using applyEdits()
+      function featureLayerApplyEdits(){
+        let editFeature: any, highlight:any;
+        const featureLayer = new FeatureLayer({
+          //https://procesosags.sigsa.info/server/rest/services/Francisco_Lopez/poblacion_mexico/FeatureServer/0
+          //https://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/IncidentsReport/FeatureServer/0
+          url: "https://procesosags.sigsa.info/server/rest/services/Francisco_Lopez/poblacion_mexico/FeatureServer/0",
+          outFields: ["*"],
+          id: "incidentsLayer"
+        });
+
+        // New FeatureForm and set its layer to 'Incidents' FeatureLayer.
+        // FeatureForm displays attributes of fields specified in the formTemplate's field elements.
+        const featureForm = new FeatureForm({
+          view: mapView, // required if using Arcade expressions using the $map global variable
+          container: "formDiv",
+          layer: featureLayer,
+          formTemplate: {
+            title: "*-Enter the incident number-*",
+            elements : [
+              {
+                type: "field",
+                fieldName: "AREA",
+                label: "*- area-*"
+              },
+              {
+                type: "field",
+                fieldName: "PERIMETER",
+                label: "*- perimetro-*"
+              }
+            ]
+          }
+        });
+        // Listen to the feature form's submit event.
+        // Update feature attributes shown in the form.
+        featureForm.on("submit", () => {
+          if (editFeature) {
+            // Grab updated attributes from the form.
+            const updated = featureForm.getValues();
+
+            // Loop through updated attributes and assign
+            // the updated values to feature attributes.
+            Object.keys(updated).forEach((name) => {
+              editFeature.attributes[name] = updated[name];
+            });
+
+            // Setup the applyEdits parameter with updates.
+            const edits = {
+              updateFeatures: [editFeature]
+            };
+            applyEditsToIncidents(edits);
+            document!.getElementById("viewDiv")!.style.cursor = "auto";
+          }
+        });// Listen to the feature form's submit event.
+        // Update feature attributes shown in the form.
+        featureForm.on("submit", () => {
+          if (editFeature) {
+            // Grab updated attributes from the form.
+            const updated = featureForm.getValues();
+
+            // Loop through updated attributes and assign
+            // the updated values to feature attributes.
+            Object.keys(updated).forEach((name) => {
+              editFeature.attributes[name] = updated[name];
+            });
+
+            // Setup the applyEdits parameter with updates.
+            const edits = {
+              updateFeatures: [editFeature]
+            };
+            applyEditsToIncidents(edits);
+            document!.getElementById("viewDiv")!.style.cursor = "auto";
+          }
+        });
+        // Check if the user clicked on the existing feature
+        selectExistingFeature();
+
+        // The FeatureTemplates widget uses the 'addTemplatesDiv'
+        // element to display feature templates from incidentsLayer
+        const templates = new FeatureTemplates({
+          container: "addTemplatesDiv",
+          layers: [featureLayer]
+        });
+
+        // Listen for when a template item is selected
+        templates.on("select", (evtTemplate: any) => {
+          // Access the template item's attributes from the event's
+          // template prototype.
+          const attributes = evtTemplate.template.prototype.attributes;
+          unselectFeature();
+          document!.getElementById("viewDiv")!.style.cursor = "crosshair";
+
+          // With the selected template item, listen for the view's click event and create feature
+          const handler = mapView.on("click", (event: any) => {
+            // remove click event handler once user clicks on the view
+            // to create a new feature
+            handler.remove();
+            event.stopPropagation();
+            featureForm.feature = null;
+
+            if (event.mapPoint) {
+              const point = event.mapPoint.clone();
+              point.z = undefined;
+              point.hasZ = false;
+
+              // Create a new feature using one of the selected
+              // template items.
+              editFeature = new Graphic({
+                geometry: point,
+                attributes: {
+                  IncidentType: attributes.IncidentType
+                }
+              });
+
+              // Setup the applyEdits parameter with adds.
+              const edits = {
+                addFeatures: [editFeature]
+              };
+              applyEditsToIncidents(edits);
+              document!.getElementById("viewDiv")!.style.cursor = "auto";
+            } else {
+              console.error("event.mapPoint is not defined");
+            }
+          });
+        });
+        //Call FeatureLayer.applyEdits() with specified params.
+        function applyEditsToIncidents(params: any) {
+          featureLayer
+            .applyEdits(params)
+            .then((editsResult: any) => {
+              // Get the objectId of the newly added feature.
+              // Call selectFeature function to highlight the new feature.
+              if (editsResult.addFeatureResults.length > 0 || editsResult.updateFeatureResults.length > 0) {
+                unselectFeature();
+                let objectId;
+                if (editsResult.addFeatureResults.length > 0) {
+                  objectId = editsResult.addFeatureResults[0].objectId;
+                } else {
+                  featureForm.feature = null;
+                  objectId = editsResult.updateFeatureResults[0].objectId;
+                }
+                selectFeature(objectId);
+                if (addFeatureDiv!.style.display === "block") {
+                  toggleEditingDivs("none", "block");
+                }
+                else if(addFeatureDiv!.style.display === "none"){
+                    toggleEditingDivs("block","none");
+
+                }
+              }
+              // show FeatureTemplates if user deleted a feature
+              else if (editsResult.deleteFeatureResults.length > 0) {
+                toggleEditingDivs("block", "none");
+              }
+            })
+            .catch((error: any) => {
+              console.log("error = ", error);
+            });
+        }
+
+        // Check if a user clicked on an incident feature.
+        function selectExistingFeature() {
+          mapView.on("click", (event: any) => {
+            // clear previous feature selection
+            unselectFeature();
+            if (document!.getElementById("viewDiv")!.style.cursor != "crosshair") {
+              mapView.hitTest(event).then((response: any) => {
+                // If a user clicks on an incident feature, select the feature.
+                if (response.results.length === 0) {
+                  toggleEditingDivs("block", "none");
+                } else if (response.results[0].graphic && response.results[0].graphic.layer.id == "incidentsLayer") {
+                  if (addFeatureDiv!.style.display === "block") {
+                    toggleEditingDivs("none", "block");
+                  }
+                  selectFeature(response.results[0].graphic.attributes[featureLayer.objectIdField]);
+                }
+              });
+            }
+          });
+        }
+
+        // Highlights the clicked feature and display
+        // the feature form with the incident's attributes.
+        function selectFeature(objectId: any) {
+          // query feature from the server
+          featureLayer
+            .queryFeatures({
+              objectIds: [objectId],
+              outFields: ["*"],
+              returnGeometry: true
+            })
+            .then((results: any) => {
+              if (results.features.length > 0) {
+                editFeature = results.features[0];
+
+                // display the attributes of selected feature in the form
+                featureForm.feature = editFeature;
+
+                // highlight the feature on the view
+                mapView.whenLayerView(editFeature.layer).then((layerView: any) => {
+                  highlight = layerView.highlight(editFeature);
+                });
+              }
+            });
+        }
+         // Expand widget for the editArea div.
+         const editExpand = new Expand({
+          expandIconClass: "esri-icon-edit",
+          expandTooltip: "Expand Edit",
+          expanded: true,
+          view: mapView,
+          content: document.getElementById("editArea")
+        });
+
+        mapView.ui.add(editExpand, "top-right");
+        // input boxes for the attribute editing
+        const addFeatureDiv = document.getElementById("addFeatureDiv");
+        const attributeEditing = document.getElementById("featureUpdateDiv");
+
+        // Controls visibility of addFeature or attributeEditing divs
+        function toggleEditingDivs(addDiv: any, attributesDiv: any) {
+          addFeatureDiv!.style.display = addDiv;
+          attributeEditing!.style.display = attributesDiv;
+
+          document!.getElementById("updateInstructionDiv")!.style.display = addDiv;
+        }
+
+        // Remove the feature highlight and remove attributes
+        // from the feature form.
+        function unselectFeature() {
+          if (highlight) {
+            highlight.remove();
+          }
+        }
+
+        // Update attributes of the selected feature.
+        document!.getElementById("btnUpdate")!.onclick = () => {
+          // Fires feature form's submit event.
+          featureForm.submit();
+        };
+
+        // Delete the selected feature. ApplyEdits is called
+        // with the selected feature to be deleted.
+        document!.getElementById("btnDelete")!.onclick = () => {
+          // setup the applyEdits parameter with deletes.
+          const edits = {
+            deleteFeatures: [editFeature]
+          };
+          applyEditsToIncidents(edits);
+          document!.getElementById("viewDiv")!.style.cursor = "auto";
+        };
+
+      }
+      //fin de ejemplo de FeatureLayer using applyEdits()
+
+      //comienzo de ejemplo de FeatureLayer using applyEdits()
+      function featureLayerApplyEdits2(){
+
+          //addFeatureBtnDiv.style.display = "none";
+          //addTemplatesDiv.style.display = "none";
+          //unselectFeature();
+          const featureLayer = new FeatureLayer({
+            url: "https://procesosags.sigsa.info/server/rest/services/Francisco_Lopez/poblacion_mexico/FeatureServer/0",
+            outFields: ["*"],
+            id: "incidentsLayer"
+          });
+          let params = {
+            "cov_": 7.0,
+            "cov_id": 6.0,
+            "entidad": "cesar",
+            "capital": "Hermosillo",
+            "rasgo_geog": " ",
+            "num_edo": "26",
+            "pob_tot10": 2662480.0
+           };
+           /*let params ={
+            "FID" :1,
+            "AREA": 12,
+            "PERIMETER": 12,
+            "COV_": 12,
+            "COV_ID": 12,
+            "ENTIDAD": "cesar",
+            "CAPITAL": "daiel",
+            "RASGO_GEOG": "xxx",
+            "NUM_EDO": "12",
+            "POB_TOT10": 12,
+            "IND_MARG": 12,
+            "GRA_MARG": "alto"
+           }*/
+           //addFeatures,
+          featureLayer
+            .applyEdits({ addFeatures: [params] })
+            .then((editsResult: any) => {
+              // Get the objectId of the newly added feature.
+              // Call selectFeature function to highlight the new feature.
+              if (editsResult.addFeatureResults.length > 0) {
+                const objectId = editsResult.addFeatureResults[0].objectId;
+                console.log("actualizado/agregado:",objectId);
+              }
+            })
+            .catch((error: any) => {
+              console.log("error = ", error);
+            });
+      }
+      //fin de ejemplo de FeatureLayer using applyEdits()
     })
       .catch(err => {
         console.log(err);
