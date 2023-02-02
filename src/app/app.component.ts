@@ -348,7 +348,7 @@ export class AppComponent implements OnInit {
                   // where we will be setting the feature effect on the csv layer view
                   featureTable.filterGeometry = geometry;
                   featureTable.selectRows(results.features);
-                  
+
                   let updateFeatures = [];
                   for (let index = 0; index < results.features.length; index++) {
                     const feature = results.features[index];
@@ -784,7 +784,7 @@ export class AppComponent implements OnInit {
             outFields: ["*"],
             id: "incidentsLayer"
           });
-          let params = {
+          /*let params = {
             "cov_": 7.0,
             "cov_id": 6.0,
             "entidad": "cesar",
@@ -792,21 +792,24 @@ export class AppComponent implements OnInit {
             "rasgo_geog": " ",
             "num_edo": "26",
             "pob_tot10": 2662480.0
-           };
-           /*let params ={
-            "FID" :1,
-            "AREA": 12,
-            "PERIMETER": 12,
-            "COV_": 12,
-            "COV_ID": 12,
-            "ENTIDAD": "cesar",
-            "CAPITAL": "daiel",
-            "RASGO_GEOG": "xxx",
-            "NUM_EDO": "12",
-            "POB_TOT10": 12,
-            "IND_MARG": 12,
-            "GRA_MARG": "alto"
-           }*/
+           };*/
+           //feature.attributes
+           let params ={
+              attributes: {
+                "AREA": 12,
+                "PERIMETER": 12,
+                "COV_": 12,
+                "COV_ID": 12,
+                "ENTIDAD": "cesar",
+                "CAPITAL": "daiel",
+                "RASGO_GEOG": "xxx",
+                "NUM_EDO": "12",
+                "POB_TOT10": 12,
+                "IND_MARG": 12,
+                "GRA_MARG": "alto"
+              }
+            }
+            ;
            //addFeatures,
           featureLayer
             .applyEdits({ addFeatures: [params] })
