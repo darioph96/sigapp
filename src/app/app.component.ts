@@ -89,7 +89,7 @@ export class AppComponent implements OnInit {
         });
 
       function loadsMap() {
-        let featureLayer: { when: (arg0: () => void) => Promise<any>; };
+        let featureLayer: any;
         let selectedFeature;
         let id;
 
@@ -342,6 +342,22 @@ export class AppComponent implements OnInit {
                   // where we will be setting the feature effect on the csv layer view
                   featureTable.filterGeometry = geometry;
                   featureTable.selectRows(results.features);
+                  
+                  let updateFeatures = [];
+                  for (let index = 0; index < results.features.length; index++) {
+                    const feature = results.features[index];
+                    feature.attributes.entidad += " editado";
+                    // const jsonFeature = JSON.stringify(feature.attributes);
+                    updateFeatures.push(feature);
+                  }
+                  featureLayer
+                    .applyEdits({updateFeatures: updateFeatures})
+                    .then((editsResult: any) => {
+                      console.log(editsResult);
+                    })
+                    .catch((error: any) => {
+                      console.log("error = ", error);
+                    });
                 }
               })
               .catch(errorCallback);
