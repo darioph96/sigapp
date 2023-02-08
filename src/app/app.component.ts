@@ -291,6 +291,7 @@ export class AppComponent implements OnInit {
             featureTable.clearSelection();
             featureTable.filterGeometry = null;
             polygonGraphicsLayer.removeAll();
+            mapView.graphics.removeAll();
           });
         }
 
@@ -313,6 +314,7 @@ export class AppComponent implements OnInit {
             const queryGeometry = await geometryEngineAsync.union(
               geometries.toArray()
             );
+            queryFeaturelayer(queryGeometry);
             selectFeatures(queryGeometry);
           }
         });
@@ -366,6 +368,61 @@ export class AppComponent implements OnInit {
 
         function errorCallback(error: { message: any; }) {
           console.log("error happened:", error.message);
+        }
+
+        function queryFeaturelayer(geometry: any) {
+
+          const parcelQuery = {
+           spatialRelationship: "intersects", // Relationship operation to apply
+           geometry: geometry,  // The sketch feature geometry
+           outFields: ["*"], // Attributes to return
+           returnGeometry: true
+          };
+  
+          featureLayer.queryFeatures(parcelQuery)
+          .then((results: any) => {
+  
+            console.log("Feature count: " + results.features.length)
+  
+            displayResults(results);
+  
+          }).catch((error: any) => {
+            console.log(error);
+          });
+  
+        }
+  
+        // Show features (graphics)
+        function displayResults(results: any) {
+  
+        // Create a blue polygon
+          const symbol = {
+            type: "simple-fill",
+            color: [ 20, 130, 200, 0.5 ],
+            outline: {
+              color: "white",
+              width: .5
+            },
+          };
+  
+          const popupTemplate = {
+            title: "Parcel {APN}",
+            content: "Type: {UseType} <br> Land value: {Roll_LandValue} <br> Tax Rate City: {TaxRateCity}"
+          };
+  
+          // Set symbol and popup
+          results.features.map((feature: any) => {
+            feature.symbol = symbol;
+            feature.popupTemplate = popupTemplate;
+            return feature;
+          });
+  
+          // Clear display
+          mapView.popup.close();
+          mapView.graphics.removeAll();
+         // Add features to graphics layer
+          mapView.graphics.addMany(results.features);
+  
         }
       }
 
